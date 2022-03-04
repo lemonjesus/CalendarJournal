@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Journal</title>
+    <meta charset="utf-8" />
+  </head>
+  <body>
+    <button id="authorize_button" style="display: none;">Authorize</button>
+    <button id="signout_button" style="display: none;">Sign Out</button>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css" integrity="sha512-aOG0c6nPNzGk+5zjwyJaoRUgCdOrfSDhmMID2u4+OIslr0GjpLKo7Xm0Ao3xmpM4T8AmIouRkqwj1nrdVsLKEQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.20/summernote.min.css" integrity="sha512-m52YCZLrqQpQ+k+84rmWjrrkXAUrpl3HK0IO4/naRwp58pyr7rf5PO1DbI2/aFYwyeIH/8teS9HbLxVyGqDv/A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js" integrity="sha512-uto9mlQzrs59VwILcLiRYeLKPPbS/bT71da/OEBYEwcdNUk8jYIy+D176RYoop1Da+f9mvkYrmj5MCLZWEtQuA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js" integrity="sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.20/summernote.min.js" integrity="sha512-6rE6Bx6fCBpRXG/FWpQmvguMWDLWMQjPycXMr35Zx/HRD9nwySZswkkLksgyQcvrpYMx0FELLJVBvWFtubZhDQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script type="text/javascript">
+      // SET THE FOLLOWING THREE VARIABLES (see the README)
+      var CLIENT_ID = "";
+      var API_KEY = "";
+      var calendarName = "";
+
+      var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"];
+      var SCOPES = "https://www.googleapis.com/auth/calendar";
+
+      var authorizeButton = document.getElementById("authorize_button");
+      var signoutButton = document.getElementById("signout_button");
+
+      var calendarId;
+      var data = {};
+
+      // On load, called to load the auth2 library and API client library.
+      function handleClientLoad() {
+        gapi.load("client:auth2", initClient);
+      }
+
+      // Initializes the API client library and sets up sign-in state listeners.
+      function initClient() {
+        gapi.client.init({
+          apiKey: API_KEY,
+          clientId: CLIENT_ID,
+          discoveryDocs: DISCOVERY_DOCS,
+          scope: SCOPES
+        }).then(function () {
+          // Listen for sign-in state changes.
+          gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+
+          // Handle the initial sign-in state.
+          updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+          authorizeButton.onclick = handleAuthClick;
+          signoutButton.onclick = handleSignoutClick;
+        }, function(error) {
+          alert(JSON.stringify(error, null, 2));
+        });
+      }
+
+      // Called when the signed in status changes, to update the UI appropriately. After a sign-in, the API is called.
+      function updateSigninStatus(isSignedIn) {
+        if (isSignedIn) {
+          authorizeButton.style.display = "none";
+          signoutButton.style.display = "block";
+          loadCalendarForMonth(moment().year(), moment().month()+1);
+        } else {
+          authorizeButton.style.display = "block";
+          signoutButton.style.display = "none";
+        }
+      }
+
+      // Sign in the user upon button click.
+      function handleAuthClick(event) {
+        gapi.auth2.getAuthInstance().signIn();
+      }
+
+      // Sign out the user upon button click.
+      function handleSignoutClick(event) {
+        gapi.auth2.getAuthInstance().signOut();
+      }
+
+      function loadCalendarForMonth(year, month) {
+        data = {};
+        $("#summernote").prop("disabled",true);
+
+        gapi.client.calendar.calendarList.list().then(function(response) {
+          var calendarList = response.result.items;
+          var id = calendarList.find(calendar => calendar.summary === calendarName).id;
+
+          var startDate = moment(year + "-" + month, "YYYY-MM").startOf("month").format();
+          var endDate = moment(year + "-" + month, "YYYY-MM").endOf("month").format();
+
+          calendarId = id;
+
+          gapi.client.calendar.events.list({
+            "calendarId": id,
+            "timeMin": startDate,
+            "timeMax": endDate,
+            "showDeleted": false,
+            "singleEvents": true,
+            "orderBy": "startTime"
+          }).then(function(response) {
+            var events = response.result.items;
+            console.log(events);
+
+            if (events.length > 0) {
+              for (i = 0; i < events.length; i++) {
+                var event = events[i];
+                var when = event.start.dateTime;
+                if (!when) {
+                  when = event.start.date;
+                }
+
+                var day = moment(when).date();
+                data[day] = {"when": when, content: event.description, id: event.id};
+              }
+            }
+
+            populateData(moment().format());
+            $("#summernote").prop("disabled", false);
+          });
+        });
+      }
+
+      function populateData(date) {
+        var day = moment(date).date();
+        if(data[day]) {
+          $("#summernote").summernote("code", data[day].content);
+        } else {
+          $("#summernote").summernote("code", "");
+        }
+      }
+
+      $(document).ready(function() {
+        $("#datepicker").datepicker({onChangeMonthYear: loadCalendarForMonth, onSelect: populateData});
+        $("#summernote").summernote();
+        $("#save").click(function() {
+          var content = $("#summernote").summernote("code");
+          // remove <html-blob> tags from string and add them back
+          content = content.replace(/<\/?html-blob>/g, "");
+          content = "<html-blob>" + content + "</html-blob>";
+
+          $("#summernote").prop("disabled", true);
+          $("#summernote").summernote("code", content);
+
+          var when = moment($("#datepicker").val())
+          var day = when.date();
+          if(data[day]) {
+            data[day].content = content;
+
+            $(this).toggleClass("progress-bar-striped progress-bar-animated").prop("disabled",true);
+
+            gapi.client.calendar.events.patch({
+              "calendarId": calendarId,
+              "eventId": data[day].id,
+              "resource": {
+                "description": content
+              }
+            }).then(function(response) {
+              $("#save").toggleClass("progress-bar-striped progress-bar-animated").prop("disabled", false);
+            });
+          } else {
+            gapi.client.calendar.events.insert({
+              "calendarId": calendarId,
+              "resource": {
+                "start": {
+                  "date": when.format("YYYY-MM-DD")
+                },
+                "end": {
+                  "date": when.format("YYYY-MM-DD")
+                },
+                "summary": when.format("MMMM Do"),
+                "description": content
+              }
+            }).then(function(response) {
+              $("#save").toggleClass("progress-bar-striped progress-bar-animated").prop("disabled", false);
+              var event = response.result;
+              data[day] = {when: event.start.date, content: event.description, id: event.id};
+            });
+          }
+        });
+      });
+
+    </script>
+    <div class="container">
+      <div class="row">
+        <div class="col-md-3">
+          <div id="datepicker"></div>
+          <button id="save" class="btn btn-success">Save</button>
+        </div>
+        <div class="col-md-9">
+          <div id="summernote"></div>
+        </div>
+      </div>
+    </div>
+
+    <script async defer src="https://apis.google.com/js/api.js"
+      onload="this.onload=function(){};handleClientLoad()"
+      onreadystatechange="if (this.readyState === 'complete') this.onload()">
+    </script>
+  </body>
+</html>
