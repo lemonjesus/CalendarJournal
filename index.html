@@ -134,7 +134,14 @@
 
       $(document).ready(function() {
         $("#datepicker").datepicker({onChangeMonthYear: loadCalendarForMonth, onSelect: populateData});
-        $("#summernote").summernote();
+        $("#summernote").summernote({
+          callbacks: {
+            onChange: function(contents, $editable) {
+              var spaceUsed = contents.length + "<html-blob></html-blob>".length;
+              $("#spaceused").width((spaceUsed/8192)*100 + "%").text(spaceUsed + "/8192");
+            }
+          }
+        });
         $("#save").click(function() {
           var content = $("#summernote").summernote("code");
           // remove <html-blob> tags from string and add them back
@@ -149,7 +156,7 @@
           if(data[day]) {
             data[day].content = content;
 
-            $(this).toggleClass("progress-bar-striped progress-bar-animated").prop("disabled",true);
+            $(this).addClass("progress-bar-striped progress-bar-animated").prop("disabled",true);
 
             gapi.client.calendar.events.patch({
               "calendarId": calendarId,
@@ -158,7 +165,7 @@
                 "description": content
               }
             }).then(function(response) {
-              $("#save").toggleClass("progress-bar-striped progress-bar-animated").prop("disabled", false);
+              $("#save").removeClass("progress-bar-striped progress-bar-animated").prop("disabled", false);
             });
           } else {
             gapi.client.calendar.events.insert({
@@ -174,7 +181,7 @@
                 "description": content
               }
             }).then(function(response) {
-              $("#save").toggleClass("progress-bar-striped progress-bar-animated").prop("disabled", false);
+              $("#save").removeClass("progress-bar-striped progress-bar-animated").prop("disabled", false);
               var event = response.result;
               data[day] = {when: event.start.date, content: event.description, id: event.id};
             });
@@ -191,6 +198,9 @@
         </div>
         <div class="col-md-9">
           <div id="summernote"></div>
+          <div class="progress">
+            <div class="progress-bar" role="progressbar" id="spaceused"></div>
+          </div>
         </div>
       </div>
     </div>
