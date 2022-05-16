@@ -134,7 +134,7 @@
       }
 
       $(document).ready(function() {
-        $("#datepicker").datepicker({onChangeMonthYear: loadCalendarForMonth, onSelect: populateData});
+        $("#datepicker").datepicker({dateFormat: "yy-mm-dd", onChangeMonthYear: loadCalendarForMonth, onSelect: populateData});
         $("#summernote").summernote({
           callbacks: {
             onChange: function(contents, $editable) {
