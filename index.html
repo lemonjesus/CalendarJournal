@@ -6,8 +6,8 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📓</text></svg>">
   </head>
   <body>
-    <button id="authorize_button" style="display: none;">Authorize</button>
-    <button id="signout_button" style="display: none;">Sign Out</button>
+    <button id="authorize_button" onclick="handleAuthClick()" style="display:none;">Authorize</button>
+    <button id="signout_button" onclick="handleSignoutClick()" style="display:none;">Sign Out</button>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css" integrity="sha512-aOG0c6nPNzGk+5zjwyJaoRUgCdOrfSDhmMID2u4+OIslr0GjpLKo7Xm0Ao3xmpM4T8AmIouRkqwj1nrdVsLKEQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.20/summernote.min.css" integrity="sha512-m52YCZLrqQpQ+k+84rmWjrrkXAUrpl3HK0IO4/naRwp58pyr7rf5PO1DbI2/aFYwyeIH/8teS9HbLxVyGqDv/A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -23,62 +23,87 @@
       // SET THE FOLLOWING THREE VARIABLES (see the README)
       var CLIENT_ID = "";
       var API_KEY = "";
-      var calendarName = "";
+      var CALENDAR_NAME = "";
 
-      var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"];
-      var SCOPES = "https://www.googleapis.com/auth/calendar";
+      const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"];
+      const SCOPES = "https://www.googleapis.com/auth/calendar";
 
       var authorizeButton = document.getElementById("authorize_button");
       var signoutButton = document.getElementById("signout_button");
 
+      let tokenClient;
+      let gapiInited = false;
+      let gisInited = false;
+
       var calendarId;
       var data = {};
 
-      // On load, called to load the auth2 library and API client library.
-      function handleClientLoad() {
-        gapi.load("client:auth2", initClient);
+      function gapiLoaded() {
+        gapi.load("client", intializeGapiClient);
       }
 
-      // Initializes the API client library and sets up sign-in state listeners.
-      function initClient() {
-        gapi.client.init({
+      async function intializeGapiClient() {
+        await gapi.client.init({
           apiKey: API_KEY,
-          clientId: CLIENT_ID,
           discoveryDocs: DISCOVERY_DOCS,
-          scope: SCOPES
-        }).then(function () {
-          // Listen for sign-in state changes.
-          gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
-
-          // Handle the initial sign-in state.
-          updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
-          authorizeButton.onclick = handleAuthClick;
-          signoutButton.onclick = handleSignoutClick;
-        }, function(error) {
-          alert(JSON.stringify(error, null, 2));
         });
+        gapiInited = true;
+        maybeEnableButtons();
       }
 
-      // Called when the signed in status changes, to update the UI appropriately. After a sign-in, the API is called.
-      function updateSigninStatus(isSignedIn) {
-        if (isSignedIn) {
-          authorizeButton.style.display = "none";
-          signoutButton.style.display = "block";
-          loadCalendarForMonth(moment().year(), moment().month()+1);
-        } else {
-          authorizeButton.style.display = "block";
-          signoutButton.style.display = "none";
+      function gisLoaded() {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: CLIENT_ID,
+          scope: SCOPES,
+          callback: "", // defined later
+        });
+        gisInited = true;
+        maybeEnableButtons();
+      }
+
+      function maybeEnableButtons() {
+        if (gapiInited && gisInited) {
+          if(localStorage.getItem("authToken") === null) {
+            authorizeButton.style.display = "inline-block"
+          } else {
+            authorizeButton.style.display = "none";
+            signoutButton.style.display = "inline-block"
+            gapi.client.setToken(JSON.parse(localStorage.getItem("authToken")));
+            loadCalendarForMonth(moment().year(), moment().month()+1);
+          }
         }
       }
 
-      // Sign in the user upon button click.
-      function handleAuthClick(event) {
-        gapi.auth2.getAuthInstance().signIn();
+      function handleAuthClick() {
+        tokenClient.callback = async (resp) => {
+          if (resp.error !== undefined) {
+            throw (resp);
+          }
+          signoutButton.style.display = "inline-block"
+          authorizeButton.style.display = "none";
+          localStorage.setItem("authToken", JSON.stringify(gapi.client.getToken()));
+          loadCalendarForMonth(moment().year(), moment().month()+1);
+        };
+
+        if (gapi.client.getToken() === null) {
+          // Prompt the user to select a Google Account and ask for consent to share their data
+          // when establishing a new session.
+          tokenClient.requestAccessToken({prompt: "consent"});
+        } else {
+          // Skip display of account chooser and consent dialog for an existing session.
+          tokenClient.requestAccessToken({prompt: ""});
+        }
       }
 
-      // Sign out the user upon button click.
-      function handleSignoutClick(event) {
-        gapi.auth2.getAuthInstance().signOut();
+      function handleSignoutClick() {
+        const token = gapi.client.getToken();
+        if (token !== null) {
+          google.accounts.oauth2.revoke(token.access_token);
+          gapi.client.setToken("");
+          data = {};
+          authorizeButton.innerText = "Authorize";
+          signoutButton.style.display = "none";
+        }
       }
 
       function loadCalendarForMonth(year, month) {
@@ -87,7 +112,7 @@
 
         gapi.client.calendar.calendarList.list().then(function(response) {
           var calendarList = response.result.items;
-          var id = calendarList.find(calendar => calendar.summary === calendarName).id;
+          var id = calendarList.find(calendar => calendar.summary === CALENDAR_NAME).id;
 
           var startDate = moment(year + "-" + month, "YYYY-MM").startOf("month").format();
           var endDate = moment(year + "-" + month, "YYYY-MM").endOf("month").format();
@@ -121,6 +146,17 @@
             populateData(moment().format());
             $("#summernote").prop("disabled", false);
           });
+        }).catch(() => {
+          tokenClient.callback = async (resp) => {
+            if (resp.error !== undefined) {
+              throw (resp);
+            }
+            signoutButton.style.display = "inline-block"
+            authorizeButton.style.display = "none";
+            localStorage.setItem("authToken", JSON.stringify(gapi.client.getToken()));
+            loadCalendarForMonth(moment().year(), moment().month()+1);
+          };
+          tokenClient.requestAccessToken({prompt: ""});
         });
       }
 
@@ -167,6 +203,9 @@
               }
             }).then(function(response) {
               $("#save").removeClass("progress-bar-striped progress-bar-animated").prop("disabled", false);
+            }).catch(function(error) {
+              tokenClient.callback = $("#save").click
+              tokenClient.requestAccessToken({prompt: ""});
             });
           } else {
             gapi.client.calendar.events.insert({
@@ -185,6 +224,9 @@
               $("#save").removeClass("progress-bar-striped progress-bar-animated").prop("disabled", false);
               var event = response.result;
               data[day] = {when: event.start.date, content: event.description, id: event.id};
+            }).catch(function(error) {
+              tokenClient.callback = $("#save").click
+              tokenClient.requestAccessToken({prompt: ""});
             });
           }
         });
@@ -206,9 +248,7 @@
       </div>
     </div>
 
-    <script async defer src="https://apis.google.com/js/api.js"
-      onload="this.onload=function(){};handleClientLoad()"
-      onreadystatechange="if (this.readyState === 'complete') this.onload()">
-    </script>
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
   </body>
 </html>
