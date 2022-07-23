@@ -190,10 +190,11 @@
 
           var when = moment($("#datepicker").val())
           var day = when.date();
+          
+          $(this).addClass("progress-bar-striped progress-bar-animated").prop("disabled",true);
+
           if(data[day]) {
             data[day].content = content;
-
-            $(this).addClass("progress-bar-striped progress-bar-animated").prop("disabled",true);
 
             gapi.client.calendar.events.patch({
               "calendarId": calendarId,
