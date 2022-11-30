@@ -16,7 +16,7 @@ Once all of the changes propogate through Google, you should be able to use the 
 
 ## Formatting
 
-I'm pretty sure Google Calendar supports arbitrary HTML formatting. The WYSIWYG editor can do far more than Google Calendar can. It doesn't show up in the calendar, but it shows up in this app, so you can embed all sorts of stuff.
+I'm pretty sure Google Calendar supports arbitrary HTML formatting. The WYSIWYG editor can do far more than Google Calendar can. It doesn't show up in the calendar, but it shows up in this app, so you can embed all sorts of stuff. The limit is about 8KB.
 
 ## Future Work
 
