@@ -199,9 +199,22 @@
             onChange: function(contents, $editable) {
               var spaceUsed = contents.length + "<html-blob></html-blob>".length;
               $("#spaceused").width((spaceUsed/8192)*100 + "%").text(spaceUsed + "/8192");
+            },
+            onEnter: function() {
+              $("#save").click();
             }
           }
         });
+
+        $(document).bind('keydown', function(event) {
+          if (event.ctrlKey || event.metaKey) {
+            if(String.fromCharCode(event.which).toLowerCase() == 's') {
+              event.preventDefault();
+              $("#save").click();
+            }
+          }
+        });
+
         $("#save").click(function() {
           var content = $("#summernote").summernote("code");
           // remove <html-blob> tags from string and add them back
@@ -209,7 +222,6 @@
           content = "<html-blob>" + content + "</html-blob>";
 
           $("#summernote").prop("disabled", true);
-          $("#summernote").summernote("code", content);
 
           var when = moment($("#datepicker").val())
           var day = when.date();
