@@ -146,7 +146,8 @@
             populateData(moment().format());
             $("#summernote").prop("disabled", false);
           });
-        }).catch(() => {
+        }).catch((e) => {
+          console.log(e);
           tokenClient.callback = async (resp) => {
             if (resp.error !== undefined) {
               throw (resp);
