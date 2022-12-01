@@ -38,9 +38,9 @@
 
     <script type="text/javascript">
       // SET THE FOLLOWING THREE VARIABLES (see the README)
-      var CLIENT_ID = "";
-      var API_KEY = "";
-      var CALENDAR_NAME = "";
+      var CLIENT_ID = "201206772347-rmqberctsseveue4ur7r8c1c2u8cktgn.apps.googleusercontent.com";
+      var API_KEY = "AIzaSyDmK7drgkNZZMtAtlFjrUDCX2stRSrG7P8";
+      var CALENDAR_NAME = "Journal";
 
       const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"];
       const SCOPES = "https://www.googleapis.com/auth/calendar";
@@ -194,6 +194,22 @@
         }
       }
 
+      var CodeButton = function (context) {
+        var ui = $.summernote.ui;
+
+        // create button
+        var button = ui.button({
+          contents: '<i class="fa fa-child"/> Hello',
+          tooltip: 'hello',
+          click: function () {
+            // invoke insertText method with 'hello' on editor module.
+            context.invoke('editor.insertText', 'hello');
+          }
+        });
+
+        return button.render();   // return button as jquery object
+      }
+
       $(document).ready(function() {
         $("#datepicker").datepicker({dateFormat: "yy-mm-dd", onChangeMonthYear: loadCalendarForMonth, onSelect: populateData});
         $("#summernote").summernote({
@@ -204,7 +220,32 @@
             },
             onEnter: function() {
               $("#save").click();
-            }
+            },
+            onInit: function() {
+              tools = [
+                '<a class="dropdown-item custom-action" href="#" data-tag="code" role="listitem"><code>Inline Code</code></a>',
+                '<a class="dropdown-item custom-action" href="#" data-tag="kbd" role="listitem"><code>Keyboard Command</code></a>',
+                '<a class="dropdown-item custom-action" href="#" data-tag="overline" data-style="text-decoration: overline;" role="listitem"><span style="text-decoration: overline;">Overline</span></a>',
+              ]
+
+              var customTools = '<div class="note-btn-group btn-group note-custom"><div class="note-btn-group btn-group"><button type="button" class="note-btn btn btn-light btn-sm dropdown-toggle" tabindex="-1" data-toggle="dropdown" title="Custom Commands">💡</button><div class="note-dropdown-menu dropdown-menu dropdown-style" role="list" aria-label="Style">' + tools.join("") + '</div></div></div>'
+              $(customTools).appendTo($('.note-toolbar'));
+
+              $('.note-custom').tooltip({container: 'body', placement: 'bottom'});
+              
+              $('.custom-action').click(function(event) {
+                  var highlight = window.getSelection(), 
+                      spn = document.createElement($(this).data("tag")),
+                      range = highlight.getRangeAt(0)
+                  
+                  spn.innerHTML = highlight;
+                  spn.className = 'snote';  
+                  spn.style.cssText = $(this).data("style");
+              
+                  range.deleteContents();
+                  range.insertNode(spn);
+              });
+            },
           }
         });
 
