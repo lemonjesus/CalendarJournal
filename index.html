@@ -118,12 +118,12 @@
       function handleSignoutClick() {
         const token = gapi.client.getToken();
         if (token !== null) {
+          localStorage.clear();
           google.accounts.oauth2.revoke(token.access_token);
           gapi.client.setToken("");
           data = {};
           authorizeButton.innerText = "Authorize";
           signoutButton.style.display = "none";
-          localStorage.clear();
         }
       }
 
@@ -183,7 +183,7 @@
             localStorage.setItem("authToken", JSON.stringify(gapi.client.getToken()));
             loadCalendarForMonth(moment().year(), moment().month()+1);
           };
-          tokenClient.requestAccessToken({prompt: "none"});
+          tokenClient.requestAccessToken({prompt: ""});
         });
       }
 
@@ -286,7 +286,7 @@
               $("#save").removeClass("progress-bar-striped progress-bar-animated").prop("disabled", false);
             }).catch(function(error) {
               tokenClient.callback = () => $("#save").prop("disabled", false).click();
-              tokenClient.requestAccessToken({prompt: "none"});
+              tokenClient.requestAccessToken({prompt: ""});
             });
           } else {
             gapi.client.calendar.events.insert({
@@ -307,7 +307,7 @@
               data[day] = {when: event.start.date, content: event.description, id: event.id};
             }).catch(function(error) {
               tokenClient.callback = () => $("#save").prop("disabled", false).click();
-              tokenClient.requestAccessToken({prompt: "none"});
+              tokenClient.requestAccessToken({prompt: ""});
             });
           }
         });
