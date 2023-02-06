@@ -96,6 +96,7 @@
       function handleAuthClick() {
         tokenClient.callback = async (resp) => {
           if (resp.error !== undefined) {
+            localStorage.clear();
             throw (resp);
           }
           signoutButton.style.display = "inline-block"
@@ -110,7 +111,7 @@
           tokenClient.requestAccessToken({prompt: "consent"});
         } else {
           // Skip display of account chooser and consent dialog for an existing session.
-          tokenClient.requestAccessToken({prompt: "none"});
+          tokenClient.requestAccessToken({prompt: ""});
         }
       }
 
@@ -122,6 +123,7 @@
           data = {};
           authorizeButton.innerText = "Authorize";
           signoutButton.style.display = "none";
+          localStorage.clear();
         }
       }
 
